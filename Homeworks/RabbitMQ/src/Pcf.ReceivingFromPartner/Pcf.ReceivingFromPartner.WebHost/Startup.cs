@@ -12,6 +12,8 @@ using Pcf.ReceivingFromPartner.DataAccess;
 using Pcf.ReceivingFromPartner.DataAccess.Repositories;
 using Pcf.ReceivingFromPartner.DataAccess.Data;
 using Pcf.ReceivingFromPartner.Integration;
+using MassTransit;
+using Pcf.ReceivingFromPartner.Core.Abstractions.Services;
 
 namespace Pcf.ReceivingFromPartner.WebHost
 {
@@ -33,6 +35,15 @@ namespace Pcf.ReceivingFromPartner.WebHost
             services.AddScoped(typeof(IRepository<>), typeof(EfRepository<>));
             services.AddScoped<INotificationGateway, NotificationGateway>();
             services.AddScoped<IDbInitializer, EfDbInitializer>();
+            services.AddScoped<IBusService, BusService>();
+
+            services.AddMassTransit(x =>
+            {
+                x.UsingRabbitMq((context, cfg) =>
+                {
+                    ConfigureRmq(cfg, Configuration);
+                });
+            });
 
             services.AddHttpClient<IGivingPromoCodeToCustomerGateway, GivingPromoCodeToCustomerGateway>(c =>
             {
@@ -90,5 +101,25 @@ namespace Pcf.ReceivingFromPartner.WebHost
 
             dbInitializer.InitializeDb();
         }
-    }
+
+        /// <summary>
+        /// Конфигурирование RMQ.
+        /// </summary>
+        /// <param name="configurator"> Конфигуратор RMQ. </param>
+        /// <param name="configuration"> Конфигурация приложения. </param>
+        private static void ConfigureRmq(IRabbitMqBusFactoryConfigurator configurator, IConfiguration configuration)
+        {
+            var login = configuration.GetValue<string>("RmqSettings:Login");
+            var password = configuration.GetValue<string>("RmqSettings:Password");
+            var host = configuration.GetValue<string>("RmqSettings:Host");
+            var vHost = configuration.GetValue<string>("RmqSettings:VHost");
+            configurator.Host(host,
+                vHost,
+                h =>
+                {
+                    h.Username(login);
+                    h.Password(password);
+                });
+        }
+    } 
 }

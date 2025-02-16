@@ -10,6 +10,10 @@ using Pcf.Administration.DataAccess.Repositories;
 using Pcf.Administration.DataAccess.Data;
 using Pcf.Administration.Core.Abstractions.Repositories;
 using System;
+using MassTransit;
+using Pcf.Administration.Core.Abstractions.Services;
+using Pcf.Administration.Core.Services;
+using Pcf.Administration.Core.Consumers;
 
 namespace Pcf.Administration.WebHost
 {
@@ -36,6 +40,21 @@ namespace Pcf.Administration.WebHost
                 x.UseNpgsql(Configuration.GetConnectionString("PromocodeFactoryAdministrationDb"));
                 x.UseSnakeCaseNamingConvention();
                 x.UseLazyLoadingProxies();
+            });
+
+            services.AddScoped<IPromoCodeService, PromoCodeService>();
+            services.AddScoped<GetPromoCodeConsumer>();
+
+            services.AddMassTransit(x =>
+            {
+                x.SetKebabCaseEndpointNameFormatter();
+
+                x.UsingRabbitMq((context, cfg) =>
+                {
+                    ConfigureRmq(cfg, Configuration);
+
+                    RegisterEndPoints(cfg, context);
+                });
             });
 
             AppContext.SetSwitch("Npgsql.EnableLegacyTimestampBehavior", true);
@@ -75,6 +94,45 @@ namespace Pcf.Administration.WebHost
             });
 
             dbInitializer.InitializeDb();
+        }
+
+        /// <summary>
+        /// Конфигурирование RMQ.
+        /// </summary>
+        /// <param name="configurator"> Конфигуратор RMQ. </param>
+        /// <param name="configuration"> Конфигурация приложения. </param>
+        private static void ConfigureRmq(IRabbitMqBusFactoryConfigurator configurator, IConfiguration configuration)
+        {
+            var login = configuration.GetValue<string>("RmqSettings:Login");
+            var password = configuration.GetValue<string>("RmqSettings:Password");
+            var host = configuration.GetValue<string>("RmqSettings:Host");
+            var vHost = configuration.GetValue<string>("RmqSettings:VHost");
+            configurator.Host(host,
+                vHost,
+                h =>
+                {
+                    h.Username(login);
+                    h.Password(password);
+                });
+        }
+
+        /// <summary>
+        /// регистрация эндпоинтов
+        /// </summary>
+        /// <param name="configurator"></param>
+        /// <param name="context"></param>
+        private static void RegisterEndPoints(IRabbitMqBusFactoryConfigurator configurator, IBusRegistrationContext context)
+        {
+            configurator.ReceiveEndpoint("give_promocode_administration_queue_1", e =>
+            {
+                e.Consumer<GetPromoCodeConsumer>(context);
+                e.UseMessageRetry(r =>
+                {
+                    r.Incremental(3, TimeSpan.FromSeconds(1), TimeSpan.FromSeconds(1));
+                });
+                e.PrefetchCount = 1;
+                e.UseConcurrencyLimit(1);
+            });
         }
     }
 }
