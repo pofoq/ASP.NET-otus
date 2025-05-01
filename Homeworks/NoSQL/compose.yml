@@ -50,15 +50,22 @@ services:
     depends_on: 
       - promocode-factory-receiving-from-partner-db
   
-  #GivingToCustomer Db
+  #GivingToCustomer Db - Mongo
   promocode-factory-giving-to-customer-db:
-    image: "postgres:latest"
+    image: "mongo:4.2.3"
     container_name: 'promocode-factory-giving-to-customer-db'
-    restart: always 
     ports:
-      - 5435:5432
-    environment: 
-      - POSTGRES_PASSWORD=docker
+      - "2718:27017"
+    restart: always 
+  #GivingToCustomer Db
+  # promocode-factory-giving-to-customer-db:
+  #   image: "postgres:latest"
+  #   container_name: 'promocode-factory-giving-to-customer-db'
+  #   restart: always 
+  #   ports:
+  #     - 5435:5432
+  #   environment: 
+  #     - POSTGRES_PASSWORD=docker
   #GivingToCustomer Api
   promocode-factory-giving-to-customer-api:
     build: src/Pcf.GivingToCustomer/
