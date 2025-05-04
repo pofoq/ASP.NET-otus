@@ -9,7 +9,22 @@
     </ItemGroup>
 
     <ItemGroup>
+      <PackageReference Include="Google.Protobuf" Version="3.30.2" />
+      <PackageReference Include="Grpc.Net.Client" Version="2.71.0" />
+      <PackageReference Include="Grpc.Tools" Version="2.71.0">
+        <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+        <PrivateAssets>all</PrivateAssets>
+      </PackageReference>
       <PackageReference Include="Microsoft.AspNet.WebApi.Client" Version="6.0.0" />
     </ItemGroup>
+
+	<ItemGroup>
+		<Protobuf Include="Protos\promocode.proto" GrpcServices="Client" />
+	</ItemGroup>
+	<!--<ItemGroup>
+      <None Update="Protos\promocode.proto">
+        <GrpcServices>Client</GrpcServices>
+      </None>
+    </ItemGroup>-->
 
 </Project>
